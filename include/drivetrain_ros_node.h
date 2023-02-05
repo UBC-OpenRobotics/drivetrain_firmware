@@ -4,35 +4,65 @@
 #include <ros.h>
 #include <geometry_msgs/Twist.h>
 
-/** \brief Software interface over rosserial*/
-class DrivetrainRosNode
+#define CMD_VEL_TOPIC "/cmd_vel"
+
+
+/** \brief Software interface for control over rosserial*/
+class DriveTrainControlInterface
 {
 public:
-
+    
     ros::NodeHandle nh;
+    ros::Subscriber<geometry_msgs::Twist, DriveTrainControlInterface> twistSubscriber;
+
+    DriveTrainControlInterface()
+    : twistSubscriber(CMD_VEL_TOPIC, &DriveTrainControlInterface::twistCmdCallback, this)
+    {  // Constructor
+        cmdUpdateFlag = false;
+        velocityCmd[0] = 0.0;
+        velocityCmd[1] = 0.0;
+        nh.initNode();
+        nh.subscribe(twistSubscriber);
+    };
 
     /**
-     * \brief Constructor for sw interface class
+     * \brief Checks if the velocity command has been updated since last getVelocityCmd call
+     * \return bool
      */
-    DrivetrainRosNode();
+    bool isUpdated()
+    {
+        return cmdUpdateFlag;
+    }
 
-    /** \brief Initialize the robot hardware interface */
-    void init();
-
-    void isUpdated();
-
-    void getVelocityCmd(float* velocityArray[]);
+    /**
+     * \brief Gets the latest velocity command in linear x and angular z
+     * \param float[] input array to be modified
+     * 
+     * vel[0] = linear x velocity
+     * vel[1] = linear y velocity 
+     */
+    void getVelocityCmd(float vel[])
+    {
+        vel[0] = velocityCmd[0];
+        vel[1] = velocityCmd[1];
+        cmdUpdateFlag = false;
+    }
 
 
 private:
-    void twistCmdCb( const geometry_msgs::Twist &msg);
-
-
-    geometry_msgs::Twist* twist;
     bool cmdUpdateFlag;
     float velocityCmd[2];
-    ros::Subscriber<geometry_msgs::Twist> sub;
-    // ros::Publisher<define type>* pub;
+
+    /**
+     * \brief ROS subscriber callback function, to be called whenever a new message is received
+     * \param geometry_msgs::Twist message input for callback
+     */
+    void twistCmdCallback(const geometry_msgs::Twist &msg)
+    {
+        cmdUpdateFlag = true;
+        velocityCmd[0] = msg.linear.x;
+        velocityCmd[1] = msg.angular.z;
+    }
 };  
 
 #endif
