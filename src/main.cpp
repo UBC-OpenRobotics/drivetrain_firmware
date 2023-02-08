@@ -10,5 +10,9 @@ void setup() {
 
 void loop() {
   d.nh.spinOnce();
+  if(d.isUpdated()){
+    float vel[2];
+    d.getVelocityCmd(vel);
+  }
   // put your main code here, to run repeatedly:
 }
