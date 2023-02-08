@@ -39,7 +39,7 @@ public:
      * \param float[] input array to be modified
      * 
      * vel[0] = linear x velocity
-     * vel[1] = linear y velocity 
+     * vel[1] = angular z velocity 
      */
     void getVelocityCmd(float vel[])
     {
