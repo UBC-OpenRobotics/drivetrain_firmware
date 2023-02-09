@@ -11,10 +11,15 @@ Uses [PlatformIO](https://platformio.org/) and arduino framework. Depends on [ro
 
 Uses rosserial to establish ESP32 as a ros node over UART. The ros master will send a ROS [geometry_msgs/Twist](http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/Twist.html) message.
 
-
 The platformIO project is setup for the ESP32 WROVER. We should be able to compile and upload code directly over microUSB. 
 
 Please follow the setup instructions and **always push code to your own branches, NOT the main branch.**
+
+# Drivetrain Kinematics and Control
+
+https://en.wikipedia.org/wiki/Differential_wheeled_robot
+
+Measurements taken from CAD assembly of drivetrain for now.
 
 # Setup Instructions
 
