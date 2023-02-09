@@ -1,10 +1,19 @@
 #ifndef DRIVETRAIN_ROS_NODE_H
 #define DRIVETRAIN_ROS_NODE_H
 
+#include <math.h>
 #include <ros.h>
 #include <geometry_msgs/Twist.h>
 
+//comms constants
 #define CMD_VEL_TOPIC "/cmd_vel"
+
+//robot kinematics constants
+const float WHEEL_RADIUS = 1;
+const float DRIVETRAIN_WIDTH = 1;
+
+//unit conversions
+const float RADS_TO_RPM = 9.54929658551;
 
 
 /** \brief Software interface for control over rosserial*/
@@ -19,11 +28,36 @@ public:
     : twistSubscriber(CMD_VEL_TOPIC, &DriveTrainControlInterface::twistCmdCallback, this)
     {  // Constructor
         cmdUpdateFlag = false;
-        velocityCmd[0] = 0.0;
-        velocityCmd[1] = 0.0;
+        velocityCmd[0] = 0;
+        velocityCmd[1] = 0;
+        _rpmCmd[0] = 0;
+        _rpmCmd[1] = 0;
+        _dirCmd[0] = true;
+        _dirCmd[1] = true;
+
         nh.initNode();
         nh.subscribe(twistSubscriber);
-    };
+    }
+
+    /**
+     * \brief Calculates the desired angular velocity for each wheel based on the kinematic model for the drivetrain
+     * see https://en.wikipedia.org/wiki/Differential_wheeled_robot
+     * modifies input array
+     * \param float[] velocityCmd array, contains desired vecloity and angular velocity for drivetrain
+     * \param u_int16_t[] rpmCmd array, function will fill this array with target RPM values for each wheel
+     * \param bool[] dirCmd array, function will fill this array with target rotational direction for each wheel
+     */
+    static void calculateRobotKinematics(float velocityCmd[], u_int16_t rpmCmd[], bool dirCmd[])
+    {
+        float wR = (velocityCmd[0] + velocityCmd[1] * DRIVETRAIN_WIDTH/2)/WHEEL_RADIUS;
+        float wL = (velocityCmd[0] - velocityCmd[1] * DRIVETRAIN_WIDTH/2)/WHEEL_RADIUS;
+
+        dirCmd[0] = wR > 0;
+        dirCmd[1] = wL > 0;
+
+        rpmCmd[0] = (u_int16_t) floor(wR*RADS_TO_RPM);
+        rpmCmd[1] = (u_int16_t) floor(wL*RADS_TO_RPM);
+    }
 
     /**
      * \brief Checks if the velocity command has been updated since last getVelocityCmd call
@@ -35,23 +69,28 @@ public:
     }
 
     /**
-     * \brief Gets the latest velocity command in linear x and angular z
-     * \param float[] input array to be modified
+     * \brief Gets the latest RPM and dir for each motor
+     * \param u_int16_t[] rpmCmd - array to be modified with new rpm values
+     * \param bool[] dirCmd - array to be modified with rot. direction values
      * 
-     * vel[0] = linear x velocity
-     * vel[1] = angular z velocity 
+     * rpmCmd[0] = RPM for right wheel
+     * rpmCmd[1] = RPM for left wheel
+     * 
+     * dirCmd[0] = rot. direction for right wheel (true = forward)
+     * dirCmd[1] = rot. direction for left wheel (true = forward)
      */
-    void getVelocityCmd(float vel[])
+    void getMotorCmd(u_int16_t rpmCmd[], bool dirCmd[])
     {
-        vel[0] = velocityCmd[0];
-        vel[1] = velocityCmd[1];
+        memcpy(rpmCmd, _rpmCmd, sizeof(_rpmCmd));
+        memcpy(dirCmd, _dirCmd, sizeof(_dirCmd));
         cmdUpdateFlag = false;
     }
-
 
 private:
     bool cmdUpdateFlag;
     float velocityCmd[2];
+    u_int16_t _rpmCmd[2];
+    bool _dirCmd[2];
 
     /**
      * \brief ROS subscriber callback function, to be called whenever a new message is received
@@ -59,10 +98,11 @@ private:
      */
     void twistCmdCallback(const geometry_msgs::Twist &msg)
     {
+        velocityCmd[0] = msg.linear.x; // in m/s
+        velocityCmd[1] = msg.angular.z; // in rad/s
+        calculateRobotKinematics(velocityCmd, _rpmCmd, _dirCmd);
         cmdUpdateFlag = true;
-        velocityCmd[0] = msg.linear.x;
-        velocityCmd[1] = msg.angular.z;
     }
-};  
+};
 
 #endif
