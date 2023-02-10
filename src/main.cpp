@@ -1,44 +1,23 @@
-#include <Arduino.h>
-#include <functions.h>
+#include <drivetrain_motors.h>
+#include <drivetrain_ros_node.h>
 
-// PIN DEFINITION
-#define LED 2
-#define DIR 18  
-#define PUL 19 //pulse
-#define SW  15
-#define ENA 21
+DriveTrainControlInterface d;
+u_int16_t rpmCmd[2];
+bool dirCmd[2];
 
-//CONSTANT
-#define PRESCALAR 20
-#define COUNT 50
-#define MOTOR_ENABLE 0
-#define MOTOR_DISABLE 1
+void setup() {
+  // put your setup code here, to run once:
+  d = DriveTrainControlInterface();
+  setup_motors();
+  enableMotor();
+}
 
-// GLOBAL ASSIGNMENT
-bool  volatile state;
-int   volatile counter, timer_counter;
-
-
-void setup() 
-{
-  Serial.begin(115200);
+void loop() {
+  d.nh.spinOnce();
   
-  //PIN SETUP
-  pinMode(LED, OUTPUT);
-  pinMode(DIR, OUTPUT);
-  pinMode(PUL, OUTPUT);
-  pinMode(ENA, OUTPUT);
-
-  pinMode(SW,  INPUT_PULLUP);
-  digitalWrite(ENA,MOTOR_DISABLE);
-  state =0;
-  counter =50;
-  timer_counter =0;
-  
-  // Timer ISR
-  hw_timer_t* timer = timerBegin(0, PRESCALAR, true);
-  timerAttachInterrupt(timer, &timer_isr, true);
-  timerAlarmWrite(timer, COUNT, true);
-  timerAlarmEnable(timer);
+  if(d.isUpdated()){
+    d.getMotorCmd(rpmCmd, dirCmd);
+    driveMotor(rpmCmd[0], dirCmd[0]);
+  }
 }
  
