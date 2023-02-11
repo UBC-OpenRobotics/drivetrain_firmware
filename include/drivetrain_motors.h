@@ -4,49 +4,83 @@
 
 #include <Arduino.h>
 
-// PIN DEFINITION
-#define LED 2
-#define DIR 18  
-#define PUL 19 //pulse
-#define SW  15
-#define ENA 21
+// STEPPER MOTOR DRIVER PIN DEFINITION
+#define DIR_R 19  //  RIGHT MOTOR DIRECTION
+#define PUL_R 18  //  RIGHT MOTOR PULSE
+#define ENA_R 5   //  RIGHT MOTOR ENABLE
+
+#define DIR_L 33  //  LEFT MOTOR DIRECTION
+#define PUL_L 25  //  LEFT MOTOR PULSE
+#define ENA_L 26  //  LEFT MOTOR ENABLE
+
+#define LEFT_MOTOR  0
+#define RIGHT_MOTOR 1
 
 //CONSTANT
-#define PRESCALAR 20
-#define COUNT 50
-#define MOTOR_ENABLE 0
-#define MOTOR_DISABLE 1
+#define COUNT           50
+#define PRESCALAR       20    //  TIMER PRESCALER
+#define MOTOR_ENABLE    0  
+#define MOTOR_DISABLE   1
+#define STEP_PER_REV    200
+#define SEC_PER_MIN     60
+#define TIMER_ISR_FREQ  4000
 
 // GLOBAL ASSIGNMENT
-bool volatile state;
-int volatile counter, timer_counter;
+bool volatile state_left, state_right;
+int volatile counter_left, timer_counter_left;
+int volatile counter_right, timer_counter_right;
 
 //function that uses the internal RAM of the ESP32 to store the counter and timer data
 void IRAM_ATTR timer_isr()
 {
-  if(timer_counter >= counter)
+  if(timer_counter_left >= counter_left || timer_counter_right >= counter_right )
   {
-    state = !state;
-    timer_counter = 0;
-    digitalWrite(PUL, state);
+    if(timer_counter_left >= counter_left)
+    {
+      state_left = !state_left;
+      timer_counter_left = 0;
+      digitalWrite(PUL_L, state_left);
+    }
+    else
+    {
+      timer_counter_left ++;
+      if(timer_counter_right >= counter_right)
+      {
+        state_right = !state_tight;
+        timer_counter_right = 0;
+        digitalWrite(PUL_R, state_right);
+        
+      else timer_counter_right ++;
+      }
+    }
   }
   else
-    timer_counter++;
+  {
+      timer_counter_left ++;
+      timer_counter_right ++;
+  }
 }
 
 //function to setup motors
-void setup_motors(){
-  //PIN SETUP
-  pinMode(LED, OUTPUT);
-  pinMode(DIR, OUTPUT);
-  pinMode(PUL, OUTPUT);
-  pinMode(ENA, OUTPUT);
+void setup_motors()
+{
 
-  pinMode(SW,  INPUT_PULLUP);
-  digitalWrite(ENA,MOTOR_DISABLE);
-  state =0;
-  counter =50;
-  timer_counter =0;
+  //PIN SETUP
+  pinMode(DIR_R, OUTPUT);
+  pinMode(PUL_R, OUTPUT);
+  pinMode(ENA_R, OUTPUT);
+
+  pinMode(DIR_L, OUTPUT);
+  pinMode(PUL_L, OUTPUT);
+  pinMode(ENA_L, OUTPUT);
+
+
+  state_left  = 0;
+  state_right = 0;
+  counter_left  = 0;
+  counter_right = 0;
+  timer_counter_left  = 0; 
+  timer_counter_right = 0;
   
   // Timer ISR
   hw_timer_t* timer = timerBegin(0, PRESCALAR, true);
@@ -55,25 +89,33 @@ void setup_motors(){
   timerAlarmEnable(timer);
 }
 
-void enableMotor(){
-  digitalWrite(ENA, MOTOR_ENABLE);
+void enableMotor()
+{
+  digitalWrite(ENA_R, MOTOR_ENABLE);
+  digitalWrite(ENA_L, MOTOR_ENABLE);
 }
 
-void disableMotor(){
-  digitalWrite(ENA, MOTOR_DISABLE);
+void disableMotor()
+{
+  digitalWrite(ENA_R, MOTOR_DISABLE);
+  digitalWrite(ENA_L, MOTOR_DISABLE);
 }
 
 //return required counter for the isr for a 200 step motor
 int speed_count_cal(int speed)
 {
-  float f = speed*200/60;
-  return 40000/f +0.5;
+  float f = speed*STEP_PER_REV/SEC_PER_MIN;
+  return TIMER_ISR_FREQ/f +0.5;   
 }
 
 //drive stepper motor with a certain direction and speed
-void driveMotor(u_int16_t rpm, bool dir){
-  digitalWrite(DIR, dir);
-  counter = speed_count_cal(rpm) -1;
+void driveMotor(u_int16_t* rpm, bool* dir)
+{
+  digitalWrite(ENA_R, dir[0]);
+  digitalWrite(ENA_L, dir[1]);
+  counter_left  = speed_count_cal(rpm[1]);
+  counter_right = speed_count_cal(rpm[0]);
+
 }
 
 #endif

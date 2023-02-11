@@ -17,7 +17,7 @@ void loop() {
   
   if(d.isUpdated()){
     d.getMotorCmd(rpmCmd, dirCmd);
-    driveMotor(rpmCmd[0], dirCmd[0]);
+    driveMotor(rpmCmd, dirCmd);
   }
 }
  
