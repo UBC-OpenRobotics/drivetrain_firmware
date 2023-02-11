@@ -4,13 +4,15 @@
 #include <math.h>
 #include <ros.h>
 #include <geometry_msgs/Twist.h>
+#include <std_msgs/String.h>
 
 //comms constants
-#define CMD_VEL_TOPIC "/cmd_vel"
+#define CMD_VEL_TOPIC "/cmd_vel_mux"
+#define LOG_PUB_TOPIC "/esp32/log"
 
 //robot kinematics constants
-const float WHEEL_RADIUS = 1;
-const float DRIVETRAIN_WIDTH = 1;
+const float WHEEL_RADIUS = 0.075;
+const float DRIVETRAIN_WIDTH = 0.55;
 
 //unit conversions
 const float RADS_TO_RPM = 9.54929658551;
@@ -20,12 +22,14 @@ const float RADS_TO_RPM = 9.54929658551;
 class DriveTrainControlInterface
 {
 public:
-    
+    ros::Publisher logger;
     ros::NodeHandle nh;
     ros::Subscriber<geometry_msgs::Twist, DriveTrainControlInterface> twistSubscriber;
 
     DriveTrainControlInterface()
-    : twistSubscriber(CMD_VEL_TOPIC, &DriveTrainControlInterface::twistCmdCallback, this)
+    : twistSubscriber(CMD_VEL_TOPIC, &DriveTrainControlInterface::twistCmdCallback, this),
+        logger(LOG_PUB_TOPIC, &string_msg)
+    
     {  // Constructor
         cmdUpdateFlag = false;
         velocityCmd[0] = 0;
@@ -37,6 +41,13 @@ public:
 
         nh.initNode();
         nh.subscribe(twistSubscriber);
+        nh.advertise(logger);
+        // ros::Publisher p("/esp32/log", &log);
+    }
+
+    void log(const char * msg){
+        string_msg.data = msg;
+        logger.publish(&string_msg);
     }
 
     /**
@@ -91,6 +102,7 @@ private:
     float velocityCmd[2];
     u_int16_t _rpmCmd[2];
     bool _dirCmd[2];
+    std_msgs::String string_msg;
 
     /**
      * \brief ROS subscriber callback function, to be called whenever a new message is received
@@ -102,6 +114,7 @@ private:
         velocityCmd[1] = msg.angular.z; // in rad/s
         calculateRobotKinematics(velocityCmd, _rpmCmd, _dirCmd);
         cmdUpdateFlag = true;
+        log("twist cmd received");
     }
 };
 

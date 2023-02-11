@@ -46,12 +46,11 @@ void IRAM_ATTR timer_isr()
       timer_counter_left ++;
       if(timer_counter_right >= counter_right)
       {
-        state_right = !state_tight;
+        state_right = !state_right;
         timer_counter_right = 0;
         digitalWrite(PUL_R, state_right);
-        
-      else timer_counter_right ++;
       }
+      else timer_counter_right ++;
     }
   }
   else
