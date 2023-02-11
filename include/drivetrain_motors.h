@@ -30,38 +30,32 @@ bool volatile state_left, state_right;
 int volatile counter_left, timer_counter_left;
 int volatile counter_right, timer_counter_right;
 
-//function that uses the internal RAM of the ESP32 to store the counter and timer data
-void IRAM_ATTR timer_isr()
+//function that uses the internal RAM of the ESP32 to store the counter and timer_left data
+void IRAM_ATTR timer_isr_left()
 {
-  if(timer_counter_left >= counter_left || timer_counter_right >= counter_right )
+  if(timer_counter_left >= counter_left)
   {
-    if(timer_counter_left >= counter_left)
-    {
-      state_left = !state_left;
-      timer_counter_left = 0;
-      digitalWrite(PUL_L, state_left);
-    }
-    else
-    {
-      timer_counter_left ++;
-      if(timer_counter_right >= counter_right)
-      {
-        state_right = !state_right;
-        timer_counter_right = 0;
-        digitalWrite(PUL_R, state_right);
-      }
-      else timer_counter_right ++;
-    }
+    state_left = !state_left;
+    timer_counter_left = 0;
+    digitalWrite(PUL_L, state_left);
   }
-  else
+  else timer_counter_left ++;
+}
+
+//function that uses the internal RAM of the ESP32 to store the counter and timer_left data
+void IRAM_ATTR timer_isr_right()
+{
+  if(timer_counter_right >= counter_right )
   {
-      timer_counter_left ++;
-      timer_counter_right ++;
+    state_right = !state_right;
+    timer_counter_right = 0;
+    digitalWrite(PUL_R, state_right);
   }
+  else timer_counter_right ++;
 }
 
 //function to setup motors
-void setup_motors()
+void setupMotors()
 {
 
   //PIN SETUP
@@ -81,20 +75,25 @@ void setup_motors()
   timer_counter_left  = 0; 
   timer_counter_right = 0;
   
-  // Timer ISR
-  hw_timer_t* timer = timerBegin(0, PRESCALAR, true);
-  timerAttachInterrupt(timer, &timer_isr, true);
-  timerAlarmWrite(timer, COUNT, true);
-  timerAlarmEnable(timer);
+  // Timer ISRs
+  hw_timer_t* timer_left = timerBegin(1, PRESCALAR, true);
+  timerAttachInterrupt(timer_left, &timer_isr_left, true);
+  timerAlarmWrite(timer_left, COUNT, true);
+  timerAlarmEnable(timer_left);
+
+  hw_timer_t* timer_right = timerBegin(0, PRESCALAR, true);
+  timerAttachInterrupt(timer_right, &timer_isr_right, true);
+  timerAlarmWrite(timer_right, COUNT, true);
+  timerAlarmEnable(timer_right);
 }
 
-void enableMotor()
+void enableMotors()
 {
   digitalWrite(ENA_R, MOTOR_ENABLE);
   digitalWrite(ENA_L, MOTOR_ENABLE);
 }
 
-void disableMotor()
+void disableMotors()
 {
   digitalWrite(ENA_R, MOTOR_DISABLE);
   digitalWrite(ENA_L, MOTOR_DISABLE);
@@ -108,13 +107,12 @@ int speed_count_cal(int speed)
 }
 
 //drive stepper motor with a certain direction and speed
-void driveMotor(u_int16_t* rpm, bool* dir)
+void driveMotors(u_int16_t* rpm, bool* dir)
 {
-  digitalWrite(ENA_R, dir[0]);
-  digitalWrite(ENA_L, dir[1]);
+  digitalWrite(DIR_R, dir[0]);
+  digitalWrite(DIR_L, dir[1]);
   counter_left  = speed_count_cal(rpm[1]);
   counter_right = speed_count_cal(rpm[0]);
-
 }
 
 #endif

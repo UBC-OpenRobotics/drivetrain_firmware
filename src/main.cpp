@@ -9,9 +9,9 @@ void setup()
 {
   // put your setup code here, to run once:
   d = DriveTrainControlInterface(d);
-  setup_motors();
-  enableMotor();
-  d.log("esp32 setup complete");
+  setupMotors();
+  disableMotors();
+  d.nh.logdebug("[ESP32] Setup complete.");
 }
 
 void loop()
@@ -19,7 +19,14 @@ void loop()
   if (d.isUpdated())
   {
     d.getMotorCmd(rpmCmd, dirCmd);
-    driveMotor(rpmCmd, dirCmd);
+    if (rpmCmd[0] == 0 and rpmCmd[1] == 0){
+      disableMotors();
+      d.log("disabled motors");
+    } else{
+      enableMotors();
+      d.log("enabled motors");
+      driveMotors(rpmCmd, dirCmd);
+    }
     d.log("motor cmd sent");
   }
 

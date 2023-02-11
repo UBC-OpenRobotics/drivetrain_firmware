@@ -5,14 +5,18 @@
 #include <ros.h>
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/String.h>
+#include <std_msgs/Bool.h>
 
 //comms constants
-#define CMD_VEL_TOPIC "/cmd_vel_mux"
+#define CMD_VEL_TOPIC "/cmd_vel"
 #define LOG_PUB_TOPIC "/esp32/log"
+// #define STOP_TOPIC "/esp32/stop"
 
 //robot kinematics constants
-const float WHEEL_RADIUS = 0.075;
-const float DRIVETRAIN_WIDTH = 0.55;
+const float WHEEL_RADIUS = 0.075; //m
+const float DRIVETRAIN_WIDTH = 0.55; //m
+const float LIN_SPEED_LIMIT = 0.5; //m/s
+const float ANG_SPEED_LIMIT = 1.0; //rad/s
 
 //unit conversions
 const float RADS_TO_RPM = 9.54929658551;
@@ -50,6 +54,11 @@ public:
         logger.publish(&string_msg);
     }
 
+    void enforce_velocity_limits(){
+        velocityCmd[0] = constrain(velocityCmd[0], -1*LIN_SPEED_LIMIT, LIN_SPEED_LIMIT);
+        velocityCmd[1] = constrain(velocityCmd[1], -1*ANG_SPEED_LIMIT, ANG_SPEED_LIMIT);
+    }
+
     /**
      * \brief Calculates the desired angular velocity for each wheel based on the kinematic model for the drivetrain
      * see https://en.wikipedia.org/wiki/Differential_wheeled_robot
@@ -66,8 +75,8 @@ public:
         dirCmd[0] = wR > 0;
         dirCmd[1] = wL > 0;
 
-        rpmCmd[0] = (u_int16_t) floor(wR*RADS_TO_RPM);
-        rpmCmd[1] = (u_int16_t) floor(wL*RADS_TO_RPM);
+        rpmCmd[0] = (u_int16_t) abs(floor(wR*RADS_TO_RPM));
+        rpmCmd[1] = (u_int16_t) abs(floor(wL*RADS_TO_RPM));
     }
 
     /**
@@ -103,6 +112,7 @@ private:
     u_int16_t _rpmCmd[2];
     bool _dirCmd[2];
     std_msgs::String string_msg;
+    char msg_buff[100];
 
     /**
      * \brief ROS subscriber callback function, to be called whenever a new message is received
@@ -112,9 +122,13 @@ private:
     {
         velocityCmd[0] = msg.linear.x; // in m/s
         velocityCmd[1] = msg.angular.z; // in rad/s
+        enforce_velocity_limits();
         calculateRobotKinematics(velocityCmd, _rpmCmd, _dirCmd);
         cmdUpdateFlag = true;
-        log("twist cmd received");
+        log("twist velocity cmd received");
+        sprintf(msg_buff, "left rpm: %d, left fwd? %d\nright rpm: %d, right fwd? %d",
+         _rpmCmd[1], _dirCmd[1], _rpmCmd[0], _dirCmd[0]);
+         log(msg_buff);
     }
 };
 
