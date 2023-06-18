@@ -22,7 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "LED.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -74,7 +74,8 @@ void StartDefaultTask(void *argument);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+  STM32LED::LED2= new STM32LED::LED(GPIOE, GPIO_PIN_1);
+  STM32LED::LED3= new STM32LED::LED(GPIOB, GPIO_PIN_14);
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -260,7 +261,10 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    STM32LED:: LED2 -> toggle();
+    osDelay(200);
+    STM32LED:: LED3 -> toggle();
+    osDelay(200);
   }
   /* USER CODE END 5 */
 }

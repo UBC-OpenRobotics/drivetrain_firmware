@@ -1,7 +1,8 @@
 #ifndef LED_H
 #define LED_H
+
 #include "stm32h7xx_hal.h"
-#include "stm32h723xx.h"
+
 namespace STM32LED
 {
     enum class state
@@ -21,10 +22,10 @@ namespace STM32LED
         protected:
             GPIO_TypeDef* gpio_port;
             uint16_t gpio_pin;
-
-        
-    }
-    extern LED* led1;
+    };
+    
+    extern LED* LED2;
+    extern LED* LED3;
 }
 
 #endif
